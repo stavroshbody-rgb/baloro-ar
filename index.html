@@ -183,10 +183,10 @@
             studioScreen.style.display = 'block';
             
             // Load the model
-            viewer.src = modelFile; // If you have different files, this swaps them!
+            viewer.src = "https://modelviewer.dev/shared-assets/models/Astronaut.glb"; // If you have different files, this swaps them!
             
             // Update Text
-            title.innerText = carName;
+            title.innerText = carName + " (TEST MODE)";
             formCarName.value = carName;
         }
 
@@ -235,4 +235,5 @@
         });
     </script>
 </body>
+
 </html>
