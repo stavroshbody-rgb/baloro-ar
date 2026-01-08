@@ -142,17 +142,18 @@
             <button slot="ar-button" style="display:none">Native AR</button>
         </model-viewer>
 
-        <div class="action-bar">
-            <h3 id="selected-car-title">Selected Car</h3>
-            <p style="font-size:0.8rem; margin-top:-10px; color:#d4af37;">Applied: Baloro Nero Exclusive</p>
-            
-            <button class="ar-btn" onclick="activateAR()">📸 TAKE PICTURE</button>
-            
-            <button class="secondary-btn" onclick="showForm()">I've taken my photo - Enter Contest</button>
-            <br>
-            <button class="secondary-btn" style="border:none; color:#555" onclick="goBack()">← Choose different car</button>
-        </div>
-    </div>
+<div class="action-bar">
+    <h3 id="selected-car-title">Selected Car</h3>
+    <p style="font-size:0.8rem; margin-top:-10px; color:#d4af37;">Applied: Baloro Nero Exclusive</p>
+    
+    <button class="ar-btn" onclick="activateAR()">👀 VIEW IN REAL WORLD</button>
+
+    <button class="secondary-btn" style="background: #333; color: white; border:none; margin-bottom: 10px;" onclick="takeSnapshot()">💾 DOWNLOAD PHOTO</button>
+    
+    <button class="secondary-btn" onclick="showForm()">Enter Contest Form</button>
+    <br>
+    <button class="secondary-btn" style="border:none; color:#555" onclick="goBack()">← Choose different car</button>
+</div>
 
     <div id="form-overlay">
         <div class="form-box">
@@ -168,72 +169,101 @@
         </div>
     </div>
 
-    <script>
-        const gridScreen = document.getElementById('grid-screen');
-        const studioScreen = document.getElementById('studio-screen');
-        const formOverlay = document.getElementById('form-overlay');
-        const viewer = document.getElementById('viewer');
-        const title = document.getElementById('selected-car-title');
-        const formCarName = document.getElementById('form-car-name');
+<script>
+    const gridScreen = document.getElementById('grid-screen');
+    const studioScreen = document.getElementById('studio-screen');
+    const formOverlay = document.getElementById('form-overlay');
+    const viewer = document.getElementById('viewer');
+    const title = document.getElementById('selected-car-title');
+    const formCarName = document.getElementById('form-car-name');
 
-        // STEP 1: USER SELECTS A CAR
-        function selectCar(modelFile, carName) {
-            // Switch screens
-            gridScreen.style.display = 'none';
-            studioScreen.style.display = 'block';
-            
-            // Load the model
-            viewer.src = "https://modelviewer.dev/shared-assets/models/Astronaut.glb"; // If you have different files, this swaps them!
-            
-            // Update Text
-            title.innerText = carName + " (TEST MODE)";
-            formCarName.value = carName;
-        }
-
-        // STEP 2: APPLY BALORO NERO PAINT (Runs automatically when model loads)
-        viewer.addEventListener("load", () => {
-            const material = viewer.model.materials[0];
-            if(material) {
-                // The Baloro Nero Recipe
-                material.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]); // Pure Black
-                material.pbrMetallicRoughness.setMetallicFactor(1.0); // Max Metal
-                material.pbrMetallicRoughness.setRoughnessFactor(0.15); // High Gloss
-            }
-        });
-
-        // STEP 3: ACTIVATE AR
-        function activateAR() {
-            viewer.activateAR();
-        }
-
-        // NAVIGATION HELPERS
-        function goBack() {
-            studioScreen.style.display = 'none';
-            gridScreen.style.display = 'flex';
-        }
-
-        function showForm() {
-            formOverlay.style.display = 'flex';
-        }
+    // STEP 1: USER SELECTS A CAR
+    function selectCar(modelFile, carName) {
+        gridScreen.style.display = 'none';
+        studioScreen.style.display = 'block';
         
-        function closeForm() {
-            formOverlay.style.display = 'none';
+        // For testing, we are using the astronaut. 
+        // In production, pass 'modelFile' here instead.
+        viewer.src = "https://modelviewer.dev/shared-assets/models/Astronaut.glb"; 
+        
+        title.innerText = carName;
+        formCarName.value = carName;
+    }
+
+    // STEP 2: APPLY BALORO NERO PAINT
+    viewer.addEventListener("load", () => {
+        const material = viewer.model.materials[0];
+        if(material) {
+            // Pure Black, High Gloss, Metallic
+            material.pbrMetallicRoughness.setBaseColorFactor([0, 0, 0, 1]); 
+            material.pbrMetallicRoughness.setMetallicFactor(1.0); 
+            material.pbrMetallicRoughness.setRoughnessFactor(0.15); 
         }
+    });
 
-        // STEP 4: SUBMIT FORM TO GOOGLE SHEETS
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbwxN4ST0jK39xFGp8rc1i_vDD4D4fMl6Y9Bxn2TsN98JZTaeV9YCzRwFTefTOoH14y5/exec'; // <--- PASTE YOUR URL HERE
-        const form = document.forms['baloro-entry'];
+    // --- FIX 1: TAKING A SNAPSHOT (Direct Download) ---
+    // This takes a picture of the model currently in the viewer
+    async function takeSnapshot() {
+        try {
+            const blob = await viewer.toBlob({ mimeType: 'image/png' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Baloro_Nero_Design.png';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            // Optional: Prompt them to enter the contest now
+            setTimeout(() => {
+                if(confirm("Photo saved! Want to enter the contest now?")) {
+                    showForm();
+                }
+            }, 1000);
+        } catch (error) {
+            console.error("Snapshot failed:", error);
+            alert("Could not save image. Try viewing in AR instead.");
+        }
+    }
 
-        form.addEventListener('submit', e => {
-            e.preventDefault();
-            fetch(scriptURL, { method: 'POST', body: new FormData(form)})
-            .then(response => {
-                alert("You are entered to win! Check your email.");
-                location.reload(); // Restart for next user
-            })
-            .catch(error => console.error('Error!', error.message));
-        });
-    </script>
+    // --- FIX 2: ACTIVATING AR ---
+    // Note: This opens the camera. The USER must press the shutter button on their phone.
+    function activateAR() {
+        if (viewer.canActivateAR) {
+            viewer.activateAR();
+        } else {
+            alert("AR is not supported on this device. Try the 'Download Photo' option.");
+        }
+    }
+
+    // NAVIGATION
+    function goBack() {
+        studioScreen.style.display = 'none';
+        gridScreen.style.display = 'flex';
+    }
+
+    function showForm() {
+        formOverlay.style.display = 'flex';
+    }
+    
+    function closeForm() {
+        formOverlay.style.display = 'none';
+    }
+
+    // SUBMIT FORM
+    const scriptURL = 'https://docs.google.com/spreadsheets/d/1nxaq7RPEudonpdJ_hKUVbmp2t2CiKlAjlXHc-mnUlUA/edit?gid=0#gid=0'; 
+    const form = document.forms['baloro-entry'];
+
+    form.addEventListener('submit', e => {
+        e.preventDefault();
+        fetch(scriptURL, { method: 'POST', body: new FormData(form)})
+        .then(response => {
+            alert("Entry Submitted!");
+            location.reload();
+        })
+        .catch(error => console.error('Error!', error.message));
+    });
+</script>
 </body>
 
 </html>
+
